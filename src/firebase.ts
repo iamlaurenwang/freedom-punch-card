@@ -1,56 +1,21 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth'
-import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, doc, setDoc } from 'firebase/firestore'
-import { firebaseConfig } from '@/firebase/firebaseConfig'
+import { getDatabase } from 'firebase/database'
+import { getAuth } from 'firebase/auth'
 
-const app = initializeApp(firebaseConfig)
-const auth = getAuth(app)
-const provider = new GoogleAuthProvider()
-const db = getFirestore(app)
-
-
-/** Auth Helpers */
-export async function signInWithGoogle(){
-    const result = await signInWithPopup(auth, provider)
-
-    // create or update user document
-    const u = result.user
-    await setDoc(doc(db, 'users', u.uid), {
-        uid: u.uid,
-        email: u.email || null,
-        displayName: u.displayName || null,
-        photoURL: u.photoURL || null,
-        lastSignIn: serverTimestamp()
-    }, {merge: true})
-
-    return result.user
+const firebaseConfig = {
+  apiKey: 'AIzaSyAbkILI5qQXkYPA8IVf5IgZQ1b8MO8Q-KQ',
+  authDomain: 'freedom-punch-card.firebaseapp.com',
+  databaseURL: 'https://freedom-punch-card-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'freedom-punch-card',
+  storageBucket: 'freedom-punch-card.firebasestorage.app',
+  messagingSenderId: '426797316051',
+  appId: '1:426797316051:web:2bb17a55263ec900a5e126',
+  measurementId: 'G-P5FPLGZCTC',
+  databseURL: 'https://freedom-punch-card-default-rtdb.asia-southeast1.firebasedatabase.app/',
 }
 
-export function signOut() { return firebaseSignOut(auth)}
-export function onAuthChange(cb) { return onAuthStateChanged(auth, cb)}
+const firebaseApp = initializeApp(firebaseConfig)
+const database = getDatabase(firebaseApp)
+const auth = getAuth(firebaseApp)
 
-/** Firestore: points */
-
-export async function addPoint(userId: string, reason?: string){
-    if(!userId) throw new Error('userId required')
-        const pointsRef = collection(db, 'points')
-        const docRef = await addDoc(pointsRef, {
-            userId,
-            reason: reason || '',
-            createAt: serverTimestamp()
-        })
-
-    return docRef.id
-
-}
-
-export function subscribeToUserPoints(userId: string, onUpdate: (ids: { id: string; }[]) => void){
-    const pointsRef = collection(db, 'points')
-    const q = query(pointsRef, where('userId', '==', userId), orderBy('createAt', 'desc'))
-    return onSnapshot(q, (snapshot) => {
-        const items = snapshot.docs.map(d => ({id: d.id, ...d.data()}))
-        onUpdate(items)
-    })
-}
-
-export { auth, db}
+export { firebaseApp, database, auth }
