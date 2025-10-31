@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { database, auth } from './firebase'
+import { ref as dbRef, onValue, child, set, get } from 'firebase/database'
 import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signOut, type UserCredential, type User } from 'firebase/auth'
 import CustomPoint from './components/CustomPoint.vue'
 import CustomHeader from './components/CustomHeader.vue'
@@ -21,10 +22,36 @@ const user = computed<AppUser | null>(() => {
   }
 })
 
+const createDefaultPoints = (max: number) => {
+  const points: UserPoints = {}
+  for (let i = 1; i <= max; i++) {
+    points[i] = false
+  }
+  return points
+}
+
+type UserPoints = {
+  [key: number]: boolean
+}
+const defaultPointNumber = 10
+const userPoint = ref<UserPoints>({})
+const displayPoints = computed(() => {
+  if (Object.keys(userPoint.value).length === 0) return createDefaultPoints(defaultPointNumber)
+  else return userPoint.value
+})
+
 function signIn() {
   signInWithPopup(auth, provider)
     .then((result) => {
       const credential = GoogleAuthProvider.credentialFromResult(result)
+      // query db and render
+      const dbResult = queryPunchCard(result.user.uid)
+      if (!dbResult) {
+        set(dbRef(database, `card/${result.user.uid}`), createDefaultPoints(defaultPointNumber))
+      } else {
+        console.log(dbResult)
+        userPoint.value = dbResult.points as UserPoints
+      }
     })
     .catch((error) => {
       const errorCode = error.code
@@ -36,6 +63,35 @@ function signIn() {
 
 function signOutUser() {
   signOut(auth)
+}
+
+function queryPunchCard(uuid: string): unknown {
+  let data: unknown
+  get(child(dbRef(database), `card/${uuid}`))
+    .then((snapshot) => {
+      if (snapshot.exists()) data = snapshot.val()
+      else data = null
+    })
+    .catch((error) => {
+      console.error(error)
+    })
+
+  return data
+}
+
+function handlePointCheck(point: number) {
+  if (Object.keys(userPoint.value).length === 0) {
+    userPoint.value[point] = true
+  } else {
+    userPoint.value[point] = userPoint.value[point] === undefined ? true : !userPoint.value[point]
+  }
+
+  updatePunchCard(firebaseUser.value?.uid || '', userPoint.value)
+  console.log(userPoint.value)
+}
+
+function updatePunchCard(uuid: string, points: UserPoints) {
+  // set(dbRef(database, `card/${uuid}/${}`), points[key])
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -58,7 +114,9 @@ onAuthStateChanged(auth, (user) => {
 
     <div id="card" class="shadow-xl aspect-video w-1/2 bg-white rounded-xl p-10">
       <div class="flex flex-wrap gap-6 justify-center items-center h-full">
-        <CustomPoint v-for="point in 10" :key="point"></CustomPoint>
+        <span v-for="(value, key) in displayPoints" :key="key">
+          <CustomPoint v-model="displayPoints[key]" @click="handlePointCheck(Number(key))"></CustomPoint>
+        </span>
       </div>
     </div>
   </div>
