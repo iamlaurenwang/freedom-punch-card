@@ -4,8 +4,8 @@ import { auth } from './firebase'
 import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signOut, type User } from 'firebase/auth'
 import CustomPoint from './components/CustomPoint.vue'
 import CustomHeader from './components/CustomHeader.vue'
-import type { AppUser, CardData } from './types'
-import { cardService } from '@/services/CardService'
+import type { AppUser, CardData, Cell } from './types'
+import { cardService } from './services/CardService'
 import { CardModel } from './models/CardModel'
 
 const currentCard = ref<CardData | null>(null)
@@ -27,7 +27,6 @@ const signIn = async () => {
   getCard()
 }
 const signOutUser = () => signOut(auth)
-onAuthStateChanged(auth, (user) => (firebaseUser.value = user))
 
 async function getCard() {
   if (!firebaseUser.value) return
@@ -38,10 +37,25 @@ async function getCard() {
     currentCard.value = cardData
   } else {
     const newCard = new CardModel({ ownerId: firebaseUser.value.uid })
-    await cardService.createCardByUserId(firebaseUser.value.uid, newCard)
+    await cardService.createCardByUserId(firebaseUser.value.uid, newCard.toJSON())
     currentCard.value = newCard
   }
 }
+
+async function toggleCellStatus(cell: Cell) {
+  if (!currentCard.value) return
+
+  const cardToUpdate = new CardModel({ ...currentCard.value })
+  cardToUpdate.setCell(cell.order)
+
+  const newCard = cardToUpdate.toJSON()
+
+  await cardService.updateCardByUserId(firebaseUser.value!.uid, newCard.id, cardToUpdate)
+}
+
+onAuthStateChanged(auth, (user) => {
+  firebaseUser.value = user
+})
 
 getCard()
 </script>
@@ -50,7 +64,7 @@ getCard()
   <CustomHeader @sign-in="signIn" @sign-out="signOutUser" v-model:model="user"></CustomHeader>
 
   <div class="flex flex-col gap-12 h-screen items-center justify-center">
-    <span class="text-center text-7xl font-semibold text-gray-900 italic"
+    <span class="text-center text-7xl font-semibold text-gray-900 italic" @click="getCard"
       >Redeem your
       <span class="relative">
         <span class="absolute -inset-1 block -skew-y-e bg-pink-500" aria-hidden="true"></span>
@@ -68,15 +82,14 @@ getCard()
 
     <div v-else-if="firebaseUser && currentCard" id="card" class="shadow-xl aspect-video w-1/2 bg-white rounded-xl p-10">
       <div class="flex flex-wrap gap-6 justify-center items-center h-full">
-        <span v-for="(value, key) in 10" :key="value">
-          <CustomPoint></CustomPoint>
+        <span v-for="cell in currentCard.cells" :key="cell.order">
+          <CustomPoint v-model:is-checked="cell.checked" v-bind:data="cell" @click="toggleCellStatus(cell)"></CustomPoint>
         </span>
       </div>
     </div>
 
     <div v-else>
       <div>{{ currentCard }}</div>
-      <div>{{ firebaseUser }}</div>
     </div>
   </div>
 </template>

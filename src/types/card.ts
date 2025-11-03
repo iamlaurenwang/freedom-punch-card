@@ -2,6 +2,7 @@
 
 
 export interface Cell {
+  order: number
   checked: boolean
   checkedAt?: string // ISO timestamp
   reason?: string

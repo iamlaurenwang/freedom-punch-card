@@ -1,6 +1,5 @@
 import type { CardData, Cell } from '@/types/card'
 
-// 只負責卡片數據管理
 export class CardModel implements CardData {
   id: string
   ownerId: string
@@ -25,10 +24,24 @@ export class CardModel implements CardData {
   }
 
   private createEmptyCells(count: number): Cell[] {
-    return Array.from({ length: count }, () => ({ checked: false }))
+    return Array.from({ length: count }, (_, index) => ({ order: index, checked: false }))
   }
 
-  // todo: 這是getter嗎?
+  setCell(index: number, opts?: { reason?: string }) {
+    const now = new Date().toISOString()
+    const current = this.cells[index]
+
+    if (current.checked === false) {
+      current.checked = true
+      current.checkedAt = now
+      if (opts?.reason) current.reason = opts.reason
+    } else {
+      current.checked = false
+    }
+
+    this.updatedAt = now
+  }
+
   toJSON(): CardData {
     return {
       id: this.id,
