@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { database, auth } from './firebase'
-import { ref as dbRef, onValue, child, set, get } from 'firebase/database'
-import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signOut, type UserCredential, type User } from 'firebase/auth'
+import { auth } from './firebase'
+import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signOut, type User } from 'firebase/auth'
 import CustomPoint from './components/CustomPoint.vue'
 import CustomHeader from './components/CustomHeader.vue'
-import type { AppUser } from './types/user'
+import type { AppUser, CardData } from './types'
+import { cardService } from '@/services/CardService'
+import { CardModel } from './models/CardModel'
 
-const provider = new GoogleAuthProvider()
+const currentCard = ref<CardData | null>(null)
 const firebaseUser = ref<User | null>(null)
 const user = computed<AppUser | null>(() => {
-  if (firebaseUser.value === null) {
-    return null
-  }
+  if (firebaseUser.value === null) return null
 
   return {
     id: firebaseUser.value.uid,
@@ -22,81 +21,29 @@ const user = computed<AppUser | null>(() => {
   }
 })
 
-const createDefaultPoints = (max: number) => {
-  const points: UserPoints = {}
-  for (let i = 1; i <= max; i++) {
-    points[i] = false
-  }
-  return points
+const signIn = async () => {
+  const provider = new GoogleAuthProvider()
+  await signInWithPopup(auth, provider)
+  getCard()
 }
+const signOutUser = () => signOut(auth)
+onAuthStateChanged(auth, (user) => (firebaseUser.value = user))
 
-type UserPoints = {
-  [key: number]: boolean
-}
-const defaultPointNumber = 10
-const userPoint = ref<UserPoints>({})
-const displayPoints = computed(() => {
-  if (Object.keys(userPoint.value).length === 0) return createDefaultPoints(defaultPointNumber)
-  else return userPoint.value
-})
+async function getCard() {
+  if (!firebaseUser.value) return
 
-function signIn() {
-  signInWithPopup(auth, provider)
-    .then((result) => {
-      const credential = GoogleAuthProvider.credentialFromResult(result)
-      // query db and render
-      const dbResult = queryPunchCard(result.user.uid)
-      if (!dbResult) {
-        set(dbRef(database, `card/${result.user.uid}`), createDefaultPoints(defaultPointNumber))
-      } else {
-        console.log(dbResult)
-        userPoint.value = dbResult.points as UserPoints
-      }
-    })
-    .catch((error) => {
-      const errorCode = error.code
-      const errorMessage = error.message
-      const email = error.customData.email
-      const credential = GoogleAuthProvider.credentialFromError(error)
-    })
-}
-
-function signOutUser() {
-  signOut(auth)
-}
-
-function queryPunchCard(uuid: string): unknown {
-  let data: unknown
-  get(child(dbRef(database), `card/${uuid}`))
-    .then((snapshot) => {
-      if (snapshot.exists()) data = snapshot.val()
-      else data = null
-    })
-    .catch((error) => {
-      console.error(error)
-    })
-
-  return data
-}
-
-function handlePointCheck(point: number) {
-  if (Object.keys(userPoint.value).length === 0) {
-    userPoint.value[point] = true
+  const card = await cardService.queryCardByUserId(firebaseUser.value.uid)
+  if (card) {
+    const [cardId, cardData] = Object.entries(card)[0]
+    currentCard.value = cardData
   } else {
-    userPoint.value[point] = userPoint.value[point] === undefined ? true : !userPoint.value[point]
+    const newCard = new CardModel({ ownerId: firebaseUser.value.uid })
+    await cardService.createCardByUserId(firebaseUser.value.uid, newCard)
+    currentCard.value = newCard
   }
-
-  updatePunchCard(firebaseUser.value?.uid || '', userPoint.value)
-  console.log(userPoint.value)
 }
 
-function updatePunchCard(uuid: string, points: UserPoints) {
-  // set(dbRef(database, `card/${uuid}/${}`), points[key])
-}
-
-onAuthStateChanged(auth, (user) => {
-  firebaseUser.value = user
-})
+getCard()
 </script>
 
 <template>
@@ -112,12 +59,24 @@ onAuthStateChanged(auth, (user) => {
       today!</span
     >
 
-    <div id="card" class="shadow-xl aspect-video w-1/2 bg-white rounded-xl p-10">
+    <div v-if="!firebaseUser" id="login" class="shadow-xl aspect-video w-1/2 bg-decor-orange rounded-xl p-10">
+      <div class="flex flex-wrap gap-6 flex-col justify-center items-center h-full">
+        <div id="firebaseui-auth-container">Sign In With</div>
+        <div class="button bg-white shadow-2xl" @click="signIn"><span class="text-text-primary">GOOGLE</span></div>
+      </div>
+    </div>
+
+    <div v-else-if="firebaseUser && currentCard" id="card" class="shadow-xl aspect-video w-1/2 bg-white rounded-xl p-10">
       <div class="flex flex-wrap gap-6 justify-center items-center h-full">
-        <span v-for="(value, key) in displayPoints" :key="key">
-          <CustomPoint v-model="displayPoints[key]" @click="handlePointCheck(Number(key))"></CustomPoint>
+        <span v-for="(value, key) in 10" :key="value">
+          <CustomPoint></CustomPoint>
         </span>
       </div>
+    </div>
+
+    <div v-else>
+      <div>{{ currentCard }}</div>
+      <div>{{ firebaseUser }}</div>
     </div>
   </div>
 </template>
