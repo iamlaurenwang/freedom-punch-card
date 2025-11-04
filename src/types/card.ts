@@ -4,7 +4,7 @@
 export interface Cell {
   order: number
   checked: boolean
-  checkedAt?: string // ISO timestamp
+  checkedAt?: string | null// ISO timestamp
   reason?: string
 }
 

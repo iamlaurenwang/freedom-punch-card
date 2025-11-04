@@ -7,6 +7,7 @@ import CustomHeader from './components/CustomHeader.vue'
 import type { AppUser, CardData, Cell } from './types'
 import { cardService } from './services/CardService'
 import { CardModel } from './models/CardModel'
+import dayjs from 'dayjs'
 
 const currentCard = ref<CardData | null>(null)
 const firebaseUser = ref<User | null>(null)
@@ -32,25 +33,29 @@ async function getCard() {
   if (!firebaseUser.value) return
 
   const card = await cardService.queryCardByUserId(firebaseUser.value.uid)
+  let tmpCard: CardData | null = null
   if (card) {
     const [cardId, cardData] = Object.entries(card)[0]
-    currentCard.value = cardData
+    tmpCard = cardData
   } else {
     const newCard = new CardModel({ ownerId: firebaseUser.value.uid })
     await cardService.createCardByUserId(firebaseUser.value.uid, newCard.toJSON())
-    currentCard.value = newCard
+    tmpCard = newCard
   }
+
+  tmpCard.cells.map((c) => (c.checkedAt = c.checked ? dayjs().format('YYYY/MM/DD HH:mm:ss') : null))
+  currentCard.value = tmpCard
 }
 
 async function toggleCellStatus(cell: Cell) {
-  if (!currentCard.value) return
+  if (!currentCard.value || !firebaseUser.value) return
+  const cellToUpdate = currentCard.value.cells.map((c) => (c.order === cell.order ? { ...c, checked: cell.checked } : c))
+  await cardService.updateCardByUserId(firebaseUser.value.uid, currentCard.value.id, {
+    ...currentCard.value,
+    cells: cellToUpdate,
+  })
 
-  const cardToUpdate = new CardModel({ ...currentCard.value })
-  cardToUpdate.setCell(cell.order)
-
-  const newCard = cardToUpdate.toJSON()
-
-  await cardService.updateCardByUserId(firebaseUser.value!.uid, newCard.id, cardToUpdate)
+  getCard()
 }
 
 onAuthStateChanged(auth, (user) => {
