@@ -19,7 +19,7 @@ const tooltipDisplay = ref(false)
     <span
       id="tooltip"
       class="absolute -top-15 left-0 bg-decor-blue text-white rounded-xl font-semibold text-nowrap py-1 px-2"
-      v-show="tooltipDisplay && isChecked"
+      v-show="tooltipDisplay && isChecked && data.checkedAt"
       >{{ data.checkedAt }}</span
     >
   </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { auth } from './firebase'
 import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signOut, type User } from 'firebase/auth'
 import CustomPoint from './components/CustomPoint.vue'
@@ -62,7 +62,13 @@ onAuthStateChanged(auth, (user) => {
   firebaseUser.value = user
 })
 
-getCard()
+watch(firebaseUser, (newUser) => {
+  if (newUser) {
+    getCard()
+  } else {
+    currentCard.value = null
+  }
+})
 </script>
 
 <template>
