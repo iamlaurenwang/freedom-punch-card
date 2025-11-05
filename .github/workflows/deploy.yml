@@ -44,4 +44,4 @@ jobs:
 
       # 7. 部署到 App Engine
       - name: Deploy to App Engine
-        run: gcloud app deploy --quiet
+        run: gcloud app deploy --quiet --service-account github-deployer@freedom-punch-card.iam.gserviceaccount.com
