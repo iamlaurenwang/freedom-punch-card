@@ -1,0 +1,12 @@
+# app.yaml
+runtime: nodejs20
+handlers:
+  #處理所有檔案
+  - url: /
+    static_files: dist/index.html
+    upload: dist/index.html
+
+  # 處理靜態資源
+  - url: /(.*)
+    static_files: dist/\1
+    upload: dist/(.*)
