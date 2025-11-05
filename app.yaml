@@ -1,6 +1,5 @@
 # app.yaml
 runtime: nodejs20
-service_account: github-deployer@freedom-punch-card.iam.gserviceaccount.com
 
 handlers:
   #處理所有檔案
