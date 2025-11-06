@@ -7,17 +7,31 @@
   --color-decor-orange: #fd967e;
   --color-decor-purple: #ced7fe;
   --color-decor-blue: #c9edf7;
+
+  --breakpoint-3xl: 48rem;
+
+  /*
+Breakpoint prefix	Minimum width	CSS
+sm	40rem (640px)	@media (width >= 40rem) { ... }
+md	48rem (768px)	@media (width >= 48rem) { ... }
+lg	64rem (1024px)	@media (width >= 64rem) { ... }
+xl	80rem (1280px)	@media (width >= 80rem) { ... }
+2xl	96rem (1536px)	@media (width >= 96rem) { ... }
+*/
 }
 
+html {
+  @apply w-full h-full;
+}
 body {
+  @apply w-full h-full;
   @apply bg-[url('@/assets/background.png')] bg-no-repeat bg-cover bg-bg-primary;
   @apply text-text-primary;
-  @apply overflow-hidden
+  @apply overflow-hidden;
 }
 
 #app {
-  @apply relative;
-  @apply h-screen w-screen;
+  @apply w-full h-full;
 }
 
 .button {
